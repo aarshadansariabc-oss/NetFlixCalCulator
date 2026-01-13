@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Netflix Calculator Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --red:#e50914; --dark-red:#b20710; --black:#000; --dark:#141414; --white:#fff; }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+        
+        body { 
+            height: 100dvh; background: #000;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Inter', sans-serif; color: var(--white);
+            overflow: hidden;
+        }
+
+        /* --- STAGE 1: PROFILE SELECTION --- */
+        #profile-screen {
+            position: fixed; inset: 0; background: #000; z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .profile-avatar {
+            width: 120px; height: 120px; background: var(--red); border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 40px rgba(229,9,20,0.4);
+        }
+        .profile-avatar:active { transform: scale(0.85); }
+        .profile-text { margin-top: 20px; color: #fff; font-family: 'Bebas Neue'; font-size: 1.5rem; letter-spacing: 2px; }
+
+        /* --- STAGE 2: FIXED N+ ANIMATION --- */
+        #intro-container {
+            position: fixed; inset: 0; background: #000; z-index: 1500;
+            display: none; justify-content: center; align-items: center;
+            perspective: 1500px;
+        }
+        .n-plus-wrapper { position: relative; width: 160px; height: 260px; transform-style: preserve-3d; }
+        .ribbon { position: absolute; width: 52px; height: 100%; background: var(--red); }
+
+        .r-right { right: 0; bottom: 0; transform-origin: bottom; z-index: 3; box-shadow: -10px 0 25px rgba(0,0,0,0.5); animation: ribbonGrow 0.8s forwards; }
+        .r-left { left: 0; top: 0; transform-origin: top; z-index: 3; box-shadow: 10px 0 25px rgba(0,0,0,0.5); opacity: 0; animation: ribbonGrow 0.8s 0.6s forwards; }
+        .r-mid { 
+            left: 0; width: 62px; height: 100%; 
+            background: linear-gradient(to bottom, var(--dark-red), var(--red), var(--dark-red));
+            z-index: 1; transform: skewX(-31deg); transform-origin: top left;
+            opacity: 0; animation: ribbonMid 0.8s 1.2s forwards;
+        }
+        .bold-plus { position: absolute; top: -10px; right: -75px; font-family: 'Bebas Neue'; font-size: 110px; color: var(--red); opacity: 0; animation: plusPop 0.5s 2.0s forwards; }
+
+        @keyframes ribbonGrow { 0% { transform: scaleY(0); opacity: 0; } 100% { transform: scaleY(1); opacity: 1; } }
+        @keyframes ribbonMid { 0% { transform: skewX(-31deg) scaleY(0); opacity: 0; } 100% { transform: skewX(-31deg) scaleY(1.05); opacity: 1; } }
+        @keyframes plusPop { to { opacity: 1; transform: scale(1); } }
+        .zoom-cinematic { animation: spectrumPass 1.2s 3.0s forwards; }
+        @keyframes spectrumPass { 0% { transform: scale(1); } 100% { transform: scale(60); opacity: 0; filter: blur(40px); } }
+
+        /* --- STAGE 3: UI & GAME --- */
+        .phone { 
+            width: 100%; max-width: 420px; padding: 25px;
+            display: none; flex-direction: column; height: 100%;
+            background: radial-gradient(circle at bottom, #320a0a 0%, #000 100%);
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .logo { font-family: 'Bebas Neue'; color: var(--red); font-size: 40px; }
+        .game-btn { font-size: 24px; cursor: pointer; filter: grayscale(1); transition: 0.3s; }
+        .game-btn.active { filter: grayscale(0); transform: scale(1.1); }
+
+        .display { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; text-align: right; padding-bottom: 20px; position: relative; }
+        #history { color: #666; font-size: 1.4rem; min-height: 30px; }
+        #result { font-size: 4.5rem; font-weight: 700; line-height: 1.1; }
+
+        /* Game UI Overlay */
+        #game-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 10; border-radius: 15px;
+            border: 2px solid var(--red);
+        }
+        #game-timer { width: 100%; height: 6px; background: var(--red); position: absolute; top: 0; transition: linear; }
+        .squid-text { color: var(--red); font-family: 'Bebas Neue'; font-size: 2.2rem; letter-spacing: 2px; }
+
+        .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding-bottom: 30px; }
+        button { height: 75px; border-radius: 16px; background: var(--dark); border: 1px solid rgba(255,255,255,0.06); color: white; font-size: 1.7rem; cursor: pointer; }
+        button:active { transform: scale(0.92); border-color: var(--red); }
+        .op { color: var(--red); font-weight: 700; }
+        .equal { grid-column: span 2; background: var(--red); border: none; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<audio id="tudum" src="https://www.myinstants.com/media/sounds/netflix-intro-sound-effect.mp3" preload="auto"></audio>
+
+<div id="profile-screen" onclick="startExperience()">
+    <div class="profile-avatar">
+        <svg viewBox="0 0 24 24" fill="white" width="70"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
+    <div class="profile-text">ARSHAD</div>
+</div>
+
+<div id="intro-container">
+    <div class="n-plus-wrapper" id="n-scaler">
+        <div class="ribbon r-mid"></div>
+        <div class="ribbon r-right"></div>
+        <div class="ribbon r-left"></div>
+        <div class="bold-plus">+</div>
+    </div>
+</div>
+
+<div class="phone" id="app-ui">
+    <div class="header">
+        <div class="logo">NETFLIX</div>
+        <div class="game-btn" onclick="toggleGame()">🎮</div>
+    </div>
+
+    <div class="display">
+        <div id="game-overlay">
+            <div id="game-timer"></div>
+            <div class="squid-text" id="game-status">SQUID MATH</div>
+            <div id="question" style="font-size: 2.5rem; margin: 15px 0; font-weight: bold;">READY?</div>
+            <div id="score" style="font-size: 1.2rem; color: #aaa; font-family: 'Bebas Neue';">Score: 0</div>
+        </div>
+        <div id="history"></div>
+        <div id="result">0</div>
+    </div>
+
+    <div class="keypad">
+        <button onclick="clearAll()">AC</button>
+        <button onclick="del()">⌫</button>
+        <button class="op" onclick="append('%')">%</button>
+        <button class="op" onclick="append('÷')">÷</button>
+        <button onclick="append('7')">7</button>
+        <button onclick="append('8')">8</button>
+        <button onclick="append('9')">9</button>
+        <button class="op" onclick="append('×')">×</button>
+        <button onclick="append('4')">4</button>
+        <button onclick="append('5')">5</button>
+        <button onclick="append('6')">6</button>
+        <button class="op" onclick="append('−')">−</button>
+        <button onclick="append('1')">1</button>
+        <button onclick="append('2')">2</button>
+        <button onclick="append('3')">3</button>
+        <button class="op" onclick="append('+')">+</button>
+        <button onclick="append('0')">0</button>
+        <button onclick="append('.')">.</button>
+        <button class="equal" onclick="calculate()">=</button>
+    </div>
+</div>
+
+<script>
+    let expression = "";
+    let isEvaluated = false;
+    let isGameMode = false;
+    let gameAnswer = 0;
+    let score = 0;
+    let gameTimer;
+
+    function startExperience() {
+        document.getElementById('tudum').play();
+        document.getElementById('profile-screen').style.display = 'none';
+        document.getElementById('intro-container').style.display = 'flex';
+        document.getElementById('n-scaler').classList.add('zoom-cinematic');
+        setTimeout(() => {
+            document.getElementById('intro-container').style.display = 'none';
+            document.getElementById('app-ui').style.display = 'flex';
+        }, 4000);
+    }
+
+    /* --- GAME LOGIC --- */
+    function toggleGame() {
+        isGameMode = !isGameMode;
+        const overlay = document.getElementById('game-overlay');
+        const btn = document.querySelector('.game-btn');
+        if (isGameMode) {
+            overlay.style.display = 'flex';
+            btn.classList.add('active');
+            score = 0;
+            document.getElementById('score').innerText = "Score: 0";
+            document.getElementById('game-status').innerText = "SQUID MATH";
+            startLevel();
+        } else {
+            overlay.style.display = 'none';
+            btn.classList.remove('active');
+            clearTimeout(gameTimer);
+            clearAll();
+        }
+    }
+
+    function startLevel() {
+        if(!isGameMode) return;
+        
+        const num1 = Math.floor(Math.random() * 30) + 1;
+        const num2 = Math.floor(Math.random() * 20) + 1;
+        const ops = ['+', '-'];
+        const op = ops[Math.floor(Math.random() * ops.length)];
+        
+        document.getElementById('question').innerText = `${num1} ${op} ${num2}`;
+        gameAnswer = op === '+' ? num1 + num2 : num1 - num2;
+        
+        document.getElementById('result').innerText = "0";
+        expression = "";
+        
+        // Timer Animation
+        const timerBar = document.getElementById('game-timer');
+        timerBar.style.transition = 'none';
+        timerBar.style.width = '100%';
+        setTimeout(() => {
+            timerBar.style.transition = '6s linear'; 
+            timerBar.style.width = '0%';
+        }, 50);
+
+        clearTimeout(gameTimer);
+        gameTimer = setTimeout(() => {
+            if(isGameMode) gameOver();
+        }, 6000);
+    }
+
+    function gameOver() {
+        document.getElementById('game-status').innerText = "ELIMINATED!";
+        document.getElementById('question').innerText = "GAME OVER";
+        isGameMode = false;
+        setTimeout(() => {
+            toggleGame();
+        }, 2000);
+    }
+
+    /* --- CALCULATOR LOGIC --- */
+    function append(val) {
+        if (isEvaluated && !['+','−','×','÷','%'].includes(val)) { expression = val; isEvaluated = false; } 
+        else { if (expression === "0") expression = val; else expression += val; isEvaluated = false; }
+        document.getElementById('result').innerText = expression;
+    }
+
+    function calculate() {
+        if (isGameMode) {
+            if (parseInt(document.getElementById('result').innerText) === gameAnswer) {
+                score++;
+                document.getElementById('score').innerText = "Score: " + score;
+                document.getElementById('game-status').innerText = "SURVIVED!";
+                clearTimeout(gameTimer);
+                setTimeout(startLevel, 1000);
+            } else {
+                gameOver();
+            }
+            return;
+        }
+
+        try {
+            let mathString = expression.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+            let result = eval(mathString);
+            document.getElementById('history').innerText = expression;
+            expression = String(Number.isInteger(result) ? result : result.toFixed(2));
+            document.getElementById('result').innerText = expression;
+            isEvaluated = true;
+        } catch (e) { document.getElementById('result').innerText = "Error"; }
+    }
+
+    function clearAll() { 
+        expression = "0"; 
+        document.getElementById('history').innerText = ""; 
+        document.getElementById('result').innerText = "0"; 
+        isEvaluated = false; 
+    }
+    
+    function del() { 
+        expression = expression.length > 1 ? expression.slice(0, -1) : "0"; 
+        document.getElementById('result').innerText = expression; 
+    }
+</script>
+</body>
+</html>
